@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package matmul_call;
+
+message MatMulInput {
+  repeated float input1 = 1;
+  repeated float input2 = 2;
+  int32 col1 = 3;
+  int32 row1 = 4;
+  int32 col2 = 5;
+  int32 row2 = 6;
+}
+
+message MatMulOutput {
+  repeated float output = 1;
+  int32 col = 3;
+  int32 row = 4;
+}
+
+service MatMul {
+  rpc Compute (MatMulInput) returns (MatMulOutput) {}
+}

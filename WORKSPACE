@@ -3,7 +3,7 @@ load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 git_repository(
     name = "org_chime",
     remote = "https://github.com/yatorho/CHIME.git",
-    commit = "c71f5308c5520ef9395dd039ae15e306edc5947e",
+    commit = "afb4466ba1a1f1e187430d0842637d3f54969807",
     shallow_since = "1660981055 +0800",
 )
 
