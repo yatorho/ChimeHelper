@@ -10,6 +10,7 @@
 // #include "matrix.h"
 #include <google/protobuf/repeated_field.h>
 
+#include <limits>
 #include <thread>
 
 using grpc::Server;
@@ -26,7 +27,8 @@ constexpr int64_t COST_PER_UNIT = 1ll << 30;
 
 class MatMulServiceImpl final : public MatMul::Service {
 public:
-  MatMulServiceImpl(ThreadPool *pool) : MatMul::Service(), _pool(pool) {}
+  MatMulServiceImpl(ThreadPool *pool, bool parallel)
+      : MatMul::Service(), _pool(pool), _parallel(parallel) {}
 
   Status Compute(ServerContext *context, const matmul_call::MatMulInput *input,
                  matmul_call::MatMulOutput *reply) override {
@@ -48,53 +50,56 @@ public:
     }
     reply->mutable_output()->Resize(col1 * row2, 0);
 
-
-    /////////////////////////////////////////////////////////////
-    for (int i = 0; i < col1; i++) {
-      for (int j = 0; j < row2; j++) {
-        float sum = 0.f;
-        for (int k = 0; k < row1; k++) {
-          sum += input->input1(i * row1 + k) * input->input2(k * row2 + j);
+    if (!_parallel) {
+      for (int i = 0; i < col1; i++) {
+        for (int j = 0; j < row2; j++) {
+          float sum = 0.f;
+          for (int k = 0; k < row1; k++) {
+            sum += input->input1(i * row1 + k) * input->input2(k * row2 + j);
+          }
+          reply->set_output(i * row2 + j, sum);
         }
-        reply->set_output(i * row2 + j, sum);
       }
+    } else {
+      _pool->ParallelFor(col1, COST_PER_UNIT, [&](int64_t start, int64_t end) {
+        for (int i = start; i < end; i++) {
+          for (int j = 0; j < row2; j++) {
+            float sum = 0.f;
+            for (int k = 0; k < row1; k++) {
+              sum += input->input1(i * row1 + k) * input->input2(k * row2 + j);
+            }
+            reply->set_output(i * row2 + j, sum);
+          }
+        }
+      });
     }
-
-    /////////////////////////////////////////////////////////////
-
-    // _pool->ParallelFor(col1, COST_PER_UNIT, [&](int64_t start, int64_t end) {
-    //   for (int i = start; i < end; i++) {
-    //     for (int j = 0; j < row2; j++) {
-    //       float sum = 0.f;
-    //       for (int k = 0; k < row1; k++) {
-    //         sum += input->input1(i * row1 + k) * input->input2(k * row2 + j);
-    //       }
-    //       reply->set_output(i * row2 + j, sum);
-    //     }
-    //   }
-    // });
 
     reply->set_col(col1);
     reply->set_row(row2);
 
     uint64_t end_time = Env::Default()->NowNanos();
-    LOG(INFO) << "Cost time: " << (end_time - start_time)<< "ns";
+    LOG(INFO) << "Cost time: " << (end_time - start_time) / 1e6 << "ms";
     return Status::OK;
   }
 
 private:
   ThreadPool *_pool;
+  bool _parallel;
 };
 
 void RunServer() {
   std::string address("0.0.0.0:50051");
 
+  bool is_parallel = false;
+
   MatMulServiceImpl service(new ThreadPool(Env::Default(), "MatMulService",
-                                           chime::port::NumTotalCPUs()));
+                                           chime::port::NumTotalCPUs()),
+                            is_parallel);
   ServerBuilder builder;
 
   builder.AddListeningPort(address, grpc::InsecureServerCredentials());
   builder.RegisterService(&service);
+  builder.SetMaxMessageSize(std::numeric_limits<int>::max());
 
   std::unique_ptr<Server> server(builder.BuildAndStart());
   std::cout << "Server listening on " << address << std::endl;

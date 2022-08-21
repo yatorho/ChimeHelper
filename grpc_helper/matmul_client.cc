@@ -93,16 +93,18 @@ bool Check(const FloatMatrix *matrix1, const FloatMatrix *matrix2,
 
 int main() {
 
-  int col1 = 4;
-  int row1 = 124;
-  int col2 = 124;
-  int row2 = 204;
+  int col1 = 1024;
+  int row1 = 512;
+  int col2 = 512;
+  int row2 = 2048;
 
   FloatMatrix *matrix1 = new FloatMatrix(col1, row1);
   FloatMatrix *matrix2 = new FloatMatrix(col2, row2);
 
-  RPCMatMulClient client(grpc::CreateChannel(
-      "localhost:50051", grpc::InsecureChannelCredentials()));
+  grpc::ChannelArguments channel_args;
+  channel_args.SetInt("grpc.max_receive_message_length", std::numeric_limits<int>::max());
+  RPCMatMulClient client(grpc::CreateCustomChannel(
+      "localhost:50051", grpc::InsecureChannelCredentials(), channel_args));
 
   FloatMatrix *result = client.RPCMatMul(matrix1, matrix2);
   if (result == nullptr) {
