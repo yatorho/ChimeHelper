@@ -118,4 +118,6 @@ int main() {
   }
 
   delete matrix1;
+  delete matrix2;
+  delete result;
 }
