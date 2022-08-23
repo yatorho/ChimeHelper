@@ -88,9 +88,9 @@ private:
 };
 
 void RunServer() {
-  std::string address("0.0.0.0:50051");
+  std::string address("127.0.0.1:50051");
 
-  bool is_parallel = false;
+  bool is_parallel = true;
 
   MatMulServiceImpl service(new ThreadPool(Env::Default(), "MatMulService",
                                            chime::port::NumTotalCPUs()),

@@ -37,7 +37,8 @@ cc_binary(
     deps = [":data_cc_grpc",
             "@com_github_grpc_grpc//:grpc++",
             ":matrix",
-            "@org_chime//chime/core/platform:logging"]
+            "@org_chime//chime/core/platform:logging",
+            "@org_chime//chime/core/platform/default:env"]
 )
 
 cc_library(
