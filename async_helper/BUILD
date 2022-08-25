@@ -1,3 +1,7 @@
+package(default_visibility = [
+        "//visibility:public",
+    ])
+
 cc_library(
     name = "tensor",
     srcs = ["tensor.h",
@@ -10,7 +14,8 @@ cc_binary(
     srcs = ["main.cc"],
     deps = [":tensor",
             ":op",
-            ":graph"],
+            ":graph",
+            ":op_lib"],
 )
 
 cc_library(
@@ -20,8 +25,16 @@ cc_library(
 )
 
 cc_library(
+    name = "op_lib",
+    srcs = ["op_impl.cc"],
+    deps = [":op",
+            ":graph"],
+)
+
+cc_library(
     name = "graph",
-    srcs = ["graph.h"],
+    srcs = ["graph.h",
+            "graph.cc"],
     deps = [":tensor",
             ":op",
             "@org_chime//chime/core/platform:threadpool",
