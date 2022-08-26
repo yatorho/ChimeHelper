@@ -1,5 +1,6 @@
 #include "graph.h"
 #include <iostream>
+#include <mutex>
 
 namespace async_helper {
 
@@ -32,8 +33,13 @@ void Graph::ShowGraph() const {
   }
 }
 
-Graph *GetDefaultGraph() { return _graph; }
+Graph *GetDefaultGraph() { 
+  return _graph; 
+}
 
-void SetDefaultGraph(Graph *graph) { _graph = graph; }
+void SetDefaultGraph(Graph *graph) { 
+  CHECK(graph != nullptr);
+  _graph = graph; 
+}
 
 } // namespace async_helper

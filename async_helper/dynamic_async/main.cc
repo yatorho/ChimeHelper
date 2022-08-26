@@ -1,8 +1,6 @@
+#include "async_helper/dynamic_async/virtual_machine.h"
+#include "async_helper/dynamic_async/virtual_machine_scope.h"
 #include "async_helper/tensor.h"
-#include "graph.h"
-#include "op.h"
-#include "session.h"
-
 #include <cmath>
 #include <iostream>
 
@@ -28,6 +26,12 @@ bool Check(ah::Tensor &t1, ah::Tensor &t2, ah::Tensor &t3, ah::Tensor &sum) {
 }
 
 int main() {
+  ah::VirtualMachineScope vm_scope;
+  /// This should be included in the scope of the main thread, to make sure the
+  /// vm has been initialized and started its `ScheduleLoop`.
+
+  LOG(INFO) << "main: start";
+
   ah::Tensor t1(2, 3);
   ah::Tensor t2(2, 3);
   ah::Tensor t3(2, 3);
@@ -39,21 +43,17 @@ int main() {
   ah::AddOp add_op1("add1", &op1, &op2);
   ah::AddOp add_op2("add2", &op3, &add_op1);
 
-  ah::Graph *graph = ah::GetDefaultGraph();
-  // graph->ShowGraph();
+  /// Sleep 1000ms to make sure vm has sheduled, and computed all ops
+  std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+  /// Of course, we can also provide a callback function to wait ops to be
+  /// computed.
+  /// Such as: `add_op1.Wait()` these means that you give a hint to the vm that
+  /// you want to wait for `add_op1` to be done at least.
 
-  ah::Session session;
-  session.Create(graph);
-
-  std::vector<std::vector<ah::Tensor *>> res;
-  session.Run({"add2", "add1"}, &res);
-  ah::ShowTensor(*res[0][0]);
-  ah::ShowTensor(*res[1][0]);
-
-  if (!Check(t1, t2, t3, *res[0][0])) {
-    std::cout << "Check failed" << std::endl;
+  if (!Check(t1, t2, t3, *add_op2._outputs[0])) {
+    std::cout << "Check failed!" << std::endl;
     return -1;
   }
-  std::cout << "Check passed" << std::endl;
+  std::cout << "Check passed!" << std::endl;
   return 0;
 }

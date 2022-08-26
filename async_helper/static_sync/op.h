@@ -16,6 +16,17 @@ public:
 
   virtual const std::string &Name() { return _name; }
 
+  virtual bool IsReadyToBeScheduled() {
+    if (IsHeaderOp())
+      return true;
+    for (auto op : _froms) {
+      if (!op->_computed) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   std::vector<Operator *> _froms;
   std::vector<Tensor *> _outputs;
 
@@ -35,10 +46,11 @@ public:
 class SetValueOp : public Operator {
 public:
   SetValueOp(const std::string &name, Tensor *t, float vavlue);
-  
+
   void Compute() override;
 
   bool IsHeaderOp() override { return true; }
+
 private:
   float _value;
 };

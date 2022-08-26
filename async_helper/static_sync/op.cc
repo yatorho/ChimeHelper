@@ -87,6 +87,7 @@ SetValueOp::SetValueOp(const std::string &name, Tensor *t, float value) {
 
 void SetValueOp::Compute() {
   if (!_computed) {
+    // LOG(INFO) << "SetValueOp::Compute From " << _name;
     Tensor *_t = _outputs[0];
 
     CHECK(_t->data.get() == nullptr);

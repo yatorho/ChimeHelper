@@ -1,6 +1,7 @@
 #include "op.h"
 
 #include <algorithm>
+#include <mutex>
 #include <utility>
 
 #ifndef ASYNC_HELPER_STATIC_SYNC_GRAPH_H_
@@ -15,6 +16,9 @@ public:
   void AddEdge(Operator *from, Operator *to) {
     if (from == nullptr || to == nullptr)
       LOG(FATAL) << "AddEdge: nullptr operator";
+
+    std::lock_guard<std::mutex> lock(_mutex);
+
     if (std::find(_edges.begin(), _edges.end(), Edge(from, to)) != _edges.end())
       return;
     _edges.push_back(Edge(from, to));
@@ -57,18 +61,7 @@ public:
     if (HaveOperator(op))
       return;
 
-    // if (op->IsHeaderOp()) {
-    //   op_with_schedule_priority = std::make_pair(0, op);
-    // } else {
-    //   // int schedule_priority = -1;
-    //   // for (auto from : op->_froms) {
-    //   //   schedule_priority = std::max(schedule_priority,
-    //   FindPriority(from));
-    //   // }
-    //   // CHECK(schedule_priority >= 0) << "Invalid schedule priority";
-    //   // op_with_schedule_priority = std::make_pair(schedule_priority, op);
-
-    // }
+    std::lock_guard<std::mutex> lock(_mutex);
     CHECK(op->IsHeaderOp()) << "AddOperator: invalid schedule priority";
     std::pair<int, Operator *> op_with_schedule_priority =
         std::make_pair(0, op);
@@ -78,6 +71,7 @@ public:
 
   // Return -1 if op is not in the graph.
   int FindPriority(Operator *op) const {
+
     for (auto &op_p : _operators_with_priority) {
       if (op_p.second == op) {
         return op_p.first;
@@ -88,6 +82,8 @@ public:
 
   // Return -1 if graph does not have op.
   int LagestPriority() const {
+    std::lock_guard<std::mutex> lock(_mutex);
+
     int max_priority = -1;
     for (auto &op_p : _operators_with_priority) {
       max_priority = std::max(max_priority, op_p.first);
@@ -97,6 +93,8 @@ public:
 
   void GetOpertorsWithPriority(int priority,
                                std::vector<Operator *> *ops) const {
+    std::lock_guard<std::mutex> lock(_mutex);
+
     ops->clear();
     for (auto &op_p : _operators_with_priority) {
       if (op_p.first == priority) {
@@ -123,27 +121,28 @@ public:
     return false;
   }
 
-  bool IsReadyToBeScheduled(Operator *op) const {
-    if (op->IsHeaderOp())
-      return true;
-
-    for (auto op : op->_froms) {
-      if (!op->_computed) {
-        return false;
-      }
-    }
-    return true;
-  }
-
   void ShowFroms(Operator *op) const;
 
   void ShowGraph() const;
 
-  size_t NumOperators() const { return _operators_with_priority.size(); }
+  size_t NumOperators() const {
+    std::lock_guard<std::mutex> lock(_mutex);
+    return _operators_with_priority.size();
+  }
 
-  size_t NumEdges() const { return _edges.size(); }
+  size_t NumEdges() const {
+    std::lock_guard<std::mutex> lock(_mutex);
+    return _edges.size();
+  }
+
+  const std::vector<std::pair<int, Operator *>> &OperatorsWithPriority() const {
+    std::lock_guard<std::mutex> lock(_mutex);
+    // LOG(INFO) << "OperatorsWithPriority: " << _operators_with_priority.size();
+    return _operators_with_priority;
+  }
 
 private:
+  mutable std::mutex _mutex;
   std::vector<Edge> _edges;
   std::vector<std::pair<int, Operator *>> _operators_with_priority;
 };
