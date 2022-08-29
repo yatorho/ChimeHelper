@@ -1,19 +1,19 @@
 load("@pybind11_bazel//:build_defs.bzl", "pybind_extension")
-load("@pybind11_bazel//:build_defs.bzl", "pybind_library")
 
 pybind_extension(
-    name = "example",
-    srcs = ["example.cpp"],
+    name = "example",  # This name is not actually created!
+    srcs = ["example.cc"],
 )
 
 py_library(
-    name = "example_py",
+    name = "example",
     data = [":example.so"],
 )
 
 py_binary(
-    name = "example",
-    srcs = ["example.py"],
-    deps = [":example_py"],
+    name = "example_test",
+    srcs = ["example_test.py"],
+    deps = [
+        ":example"
+    ],
 )
-
