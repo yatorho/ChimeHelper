@@ -45,7 +45,7 @@ public:
 
 class SetValueOp : public Operator {
 public:
-  SetValueOp(const std::string &name, Tensor *t, float vavlue);
+  SetValueOp(const std::string &name, Tensor *t, float value);
 
   void Compute() override;
 
