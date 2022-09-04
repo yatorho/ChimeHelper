@@ -1,15 +1,23 @@
-// #include "bfc_allocator/bfc_allocator.h"
+#include "bfc_allocator/bfc_allocator.h"
 
-#include <vector>
 #include <iostream>
+#include <vector>
+
+using memory::BFCAllocator;
+using memory::CPUAllocator;
 
 int main() {
-  std::vector<int> v;
-  v.push_back(1);
-  v.push_back(2);
-  v.resize(4, 5);
+  CPUAllocator cpu_allocator;
+  BFCAllocator bfc_allocator(&cpu_allocator, 1024, true);
 
-  for (auto i : v) {
-    std::cout << i << std::endl;
+
+  void *ptr = bfc_allocator.Allocate(513, 8);
+  // Check ptr is aligned to at least 256 bytes.
+  if (reinterpret_cast<uintptr_t>(ptr) % 256 != 0) {
+    std::cout << "ptr is not aligned to 256 bytes" << std::endl;
+  } else {
+    std::cout << "ptr is aligned to 256 bytes" << std::endl;
   }
+  bfc_allocator.Deallocate(ptr);
+
 }

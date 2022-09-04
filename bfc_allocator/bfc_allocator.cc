@@ -5,22 +5,30 @@
 
 namespace memory {
 
+constexpr BFCAllocator::ChunkHandle BFCAllocator::INVALID_CHUNK_HANDLE;
+
 BFCAllocator::BFCAllocator(Allocator *allocator, size_t memory_limit,
                            bool allow_growth)
     : allocator_(allocator), memory_limit_(memory_limit),
       next_allocation_id_(1), free_chunks_(INVALID_CHUNK_HANDLE),
       total_bytes_(0) {
+  for (BinNum b = 0; b < NUM_BINS; ++b) {
+    size_t bin_size = BinNumToSize(b);
+
+    new (BinFromIndex(b)) Bin(this, bin_size);
+  }
   if (allow_growth) {
     curr_allocation_bytes_ =
-        RoundedBytes(std::min(memory_limit, size_t{2 << 20}));
+        RoundedBytes(std::min(memory_limit, size_t{2 << 20})); // 128MB
   } else {
     curr_allocation_bytes_ = RoundedBytes(memory_limit);
   }
 }
 
 BFCAllocator::~BFCAllocator() {
-  /// Cause we don't implement a SubAllocator here, we just free all the memory
-  // by traversing the chunks_.
+  // Cause we don't implement a SubAllocator here, we just free all the memory
+  // by traversing the chunks_.  This may cause some memory leak if there are
+  // some AllocationRegion has been extended.
   // TODO: Implement a SubAllocator to manage the memory. Like following:
   /*
    * for (const auto &region : region_manager_.regions()) {
@@ -28,8 +36,8 @@ BFCAllocator::~BFCAllocator() {
    * }
    */
 
-  for (const auto &chunk : chunks_) {
-    allocator_->Deallocate(chunk.ptr);
+  for (auto &region : region_manager_.regions()) {
+    allocator_->Deallocate(region.ptr());
   }
 
   for (BinNum b = 0; b < NUM_BINS; b++) {
@@ -110,6 +118,9 @@ void BFCAllocator::SplitChunk(ChunkHandle h, size_t rounded_bytes) {
   Chunk *new_chunk = ChunkFromHandle(h_new_chunk);
   new_chunk->ptr =
       static_cast<void *>((static_cast<char *>(c->ptr) + rounded_bytes));
+
+  region_manager_.set_handle(new_chunk->ptr, h_new_chunk);
+
   new_chunk->size = c->size - rounded_bytes;
   c->size = rounded_bytes;
 
@@ -130,7 +141,8 @@ void BFCAllocator::SplitChunk(ChunkHandle h, size_t rounded_bytes) {
   InsertFreeChunkIntoBin(h_new_chunk);
 }
 
-void *BFCAllocator::AllocateInternal(size_t unused_align, size_t num_bytes) {
+void *BFCAllocator::AllocateInternal(size_t unused_align,
+                                     size_t num_bytes) { // 512 + 256
   if (num_bytes == 0) {
     LOG(INFO) << "Tried to allocate 0 bytes";
     return nullptr;
@@ -227,7 +239,6 @@ bool BFCAllocator::Extend(size_t alignment, size_t rounded_bytes) {
     c->prev = prev;
     prev_chunk->next = h;
   }
-
   InsertFreeChunkIntoBin(TryToCoalesce(h));
   return true;
 }
@@ -286,7 +297,8 @@ void BFCAllocator::DeleteChunk(ChunkHandle h) {
 
 void BFCAllocator::InsertFreeChunkIntoBin(ChunkHandle h) {
   Chunk *c = ChunkFromHandle(h);
-  CHECK(!c->IsUse() && (c->bin_num == INVALID_BIN_NUM));
+  CHECK(!c->IsUse() && (c->bin_num == INVALID_BIN_NUM))
+      << "is use: " << c->IsUse() << " bin_num: " << c->bin_num;
   BinNum bin_num = BinNumFromSize(c->size);
   Bin *bin = BinFromIndex(bin_num);
   c->bin_num = bin_num;

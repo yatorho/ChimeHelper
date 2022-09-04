@@ -26,14 +26,14 @@ class CPUAllocator : public Allocator {
 public:
   ~CPUAllocator() override {}
   void *Allocate(size_t size, size_t align) override {
-    return aligned_alloc(align, size);
+    return aligned_alloc(align, size);  // malloc
   }
   void Deallocate(void *ptr) override { free(ptr); }
 };
 
-class SubAllocator {
- public:
-};
+// class SubAllocator {
+//  public:
+// };
 
 class BFCAllocator : public Allocator {
 public:
@@ -68,7 +68,7 @@ private:
     ChunkHandle next = INVALID_CHUNK_HANDLE;
     ChunkHandle prev = INVALID_CHUNK_HANDLE;
 
-    BinNum bin_num;
+    BinNum bin_num = INVALID_BIN_NUM;
 
     bool IsUse() const { return allocation_id != -1; }
 
@@ -283,6 +283,7 @@ private:
   }
 
   BinNum BinNumFromSize(size_t size) const {
+    // log2(size / 256)
     uint64_t v = std::max<size_t>(size, 256) >> MIN_ALLOCATION_BITS;
     int b = std::min(NUM_BINS - 1, Log2FloorNonZero(v));
     return b;

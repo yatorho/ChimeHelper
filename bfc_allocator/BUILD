@@ -5,3 +5,9 @@ cc_library(
     deps = ["@org_chime//chime/core/platform:logging",
             "@org_chime//chime/core/platform:macros"]
 )
+
+cc_binary(
+    name = "main",
+    srcs = ["main.cc"],
+    deps = [":bfc_allocator_lib"],
+)
