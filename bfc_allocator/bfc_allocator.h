@@ -26,7 +26,7 @@ class CPUAllocator : public Allocator {
 public:
   ~CPUAllocator() override {}
   void *Allocate(size_t size, size_t align) override {
-    return aligned_alloc(align, size);  // malloc
+    return aligned_alloc(align, size); // malloc
   }
   void Deallocate(void *ptr) override { free(ptr); }
 };
@@ -123,7 +123,7 @@ private:
       DCHECK_EQ(size_t{0}, memory_size % MIN_ALLOCATION_SIZE);
       const size_t n_handles =
           (memory_size + MIN_ALLOCATION_SIZE - 1) / MIN_ALLOCATION_SIZE;
-      handles_.resize(n_handles, MIN_ALLOCATION_SIZE);
+      handles_.resize(n_handles, INVALID_CHUNK_HANDLE);
     }
 
     AllocationRegion() = default;

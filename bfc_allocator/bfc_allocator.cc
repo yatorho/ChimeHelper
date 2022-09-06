@@ -119,6 +119,7 @@ void BFCAllocator::SplitChunk(ChunkHandle h, size_t rounded_bytes) {
   new_chunk->ptr =
       static_cast<void *>((static_cast<char *>(c->ptr) + rounded_bytes));
 
+  DCHECK_EQ(region_manager_.get_handle(new_chunk->ptr), INVALID_CHUNK_HANDLE);
   region_manager_.set_handle(new_chunk->ptr, h_new_chunk);
 
   new_chunk->size = c->size - rounded_bytes;
@@ -224,6 +225,7 @@ bool BFCAllocator::Extend(size_t alignment, size_t rounded_bytes) {
   c->prev = INVALID_CHUNK_HANDLE;
   c->next = INVALID_CHUNK_HANDLE;
 
+  DCHECK_EQ(region_manager_.get_handle(c->ptr), INVALID_CHUNK_HANDLE);
   region_manager_.set_handle(c->ptr, h);
 
   // If the region was extended, then there exists a previous chunk that should
