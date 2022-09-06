@@ -27,9 +27,10 @@ BFCAllocator::BFCAllocator(Allocator *allocator, size_t memory_limit,
 
 BFCAllocator::~BFCAllocator() {
   // Cause we don't implement a SubAllocator here, we just free all the memory
-  // by traversing the chunks_.  This may cause some memory leak if there are
-  // some AllocationRegion has been extended.
-  // TODO: Implement a SubAllocator to manage the memory. Like following:
+  // by traversing the allocation regions.  This may cause some memory leak if
+  // there are some AllocationRegion has been extended.
+  // TODO: Implement a SubAllocator to free the memory of allocatin regions that
+  // are continuous.  Like following:
   /*
    * for (const auto &region : region_manager_.regions()) {
    *   allocator_->Deallocate(region.ptr(), region.memory_size());
