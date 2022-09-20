@@ -1,0 +1,6 @@
+.vscode
+*pb.h
+*.so
+*.o
+*__pycache__/
+log

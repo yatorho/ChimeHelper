@@ -31,9 +31,11 @@ public:
   void Deallocate(void *ptr) override { free(ptr); }
 };
 
-// class SubAllocator {
-//  public:
-// };
+class SubAllocator {
+ public:
+  void Alloc(void **ptr, size_t size, size_t *response_size);
+  void Free(void *ptr, size_t size);
+};
 
 class BFCAllocator : public Allocator {
 public:
