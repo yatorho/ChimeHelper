@@ -21,8 +21,5 @@ int main() {
   dis::SynceEnv();
 
   // Release server resource
-  env.second->get()->Shutdown();
-  env.first->join();
-  delete env.first;
-  delete env.second;
+  dis::FreeDisSerivce(env);
 }

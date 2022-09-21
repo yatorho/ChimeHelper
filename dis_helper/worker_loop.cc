@@ -61,7 +61,6 @@ public:
         std::string(getenv("MASTER_ADDRESS"))};
     for (auto &pair : _stubs) {
       if (pair.first == master_address) {
-        LOG(INFO) << pair.first.ip << ":" << pair.first.port;
         return &pair.second;
       }
     }
@@ -121,6 +120,7 @@ void SynceEnv() {
           static_cast<size_t>(std::stoi(std::string(getenv("WORLD_SIZE"))))) {
         ::dis::core::GetGlobalAddressMap() = address_map;
         break;
+        LOG(INFO) << "Sync Env Success!";
       }
     }
   } else {
@@ -129,14 +129,13 @@ void SynceEnv() {
       // sleep for 20ms
       std::this_thread::sleep_for(std::chrono::milliseconds(20));
     }
+    LOG(INFO) << "EnvStart success! ";
   }
 
   // Registe stub from global addressmap
   for (auto &pair : ::dis::core::GetGlobalAddressMap()) {
     client->Register(pair.second);
   }
-
-  LOG(INFO) << "EnvStart success! ";
 }
 
 void WorkerLoop() { SynceEnv(); }

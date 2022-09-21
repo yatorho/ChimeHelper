@@ -15,7 +15,9 @@ using grpc::Server;
 using grpc::ServerBuilder;
 using grpc::ServerContext;
 
-namespace {
+
+namespace dis {
+
 
 int current_rank = 1;
 
@@ -40,7 +42,6 @@ class DisServiceImpl final : public dis::DisService::Service {
   ::grpc::Status SendAddress(::grpc::ServerContext *context,
                              const ::dis::Address *adr,
                              ::dis::Status *status) override {
-    LOG(FATAL) << "FFFFFFFFFFFFFFFF";
     ::dis::core::Address address{adr->port(), adr->ip()};
     
     ::dis::core::GetGlobalAddressMap().insert(
@@ -64,7 +65,8 @@ class DisServiceImpl final : public dis::DisService::Service {
   }
 };
 
-std::unique_ptr<Server> *RunServer() {
+
+RpcServerType RunServer() {
   std::string address(getenv("LOCAL_ADDRESS"));
   address += ":";
   address += std::string(getenv("LOCAL_PORT"));
@@ -80,14 +82,11 @@ std::unique_ptr<Server> *RunServer() {
   std::unique_ptr<Server> server(builder->BuildAndStart());
   LOG(INFO) << "Server listening on " << address << std::endl;
 
-  return new std::unique_ptr<Server>(std::move(server));
+  return std::make_tuple(service, builder,
+                         new std::unique_ptr<Server>(std::move(server)));
 }
 
-} // namespace
-
-namespace dis {
-
-std::pair<std::thread *, std::unique_ptr<Server> *> EnvStart() {
+std::pair<std::thread *,RpcServerType> EnvStart() {
 
   // Insert first address to address map.
   // Get port from environment variable 'MASTER_PORT'
@@ -96,28 +95,44 @@ std::pair<std::thread *, std::unique_ptr<Server> *> EnvStart() {
   ::dis::core::GetGlobalAddressMap().insert(
       std::make_pair(0, ::dis::core::Address{port, std::string(getenv("MASTER_ADDRESS"))}));
   
-  std::unique_ptr<Server> *server = RunServer();
-
+  auto rpc = RunServer();
+  std::unique_ptr<Server> * server = std::get<2>(rpc);
   // Must use value passing in new thread instead of reference.
-  std::thread *server_thread = new std::thread([server]() {
+  std::thread *server_thread = new std::thread([server] {
     (*server)->Wait(); // Wait for server to shutdown.
   });
 
-  return std::make_pair(server_thread, server);
+  return std::make_pair(server_thread, std::move(rpc));
+}
+
+void FreeDisSerivce(std::pair<std::thread *, RpcServerType> rpc) {
+  // Step 1: Shutdown server
+  std::unique_ptr<Server> *server = std::get<2>(rpc.second);
+  server->get()->Shutdown();
+  // Step 2: Join server thread
+  rpc.first->join();
+  // Step 3: Delete server thread
+  delete rpc.first;
+  // Step 4: Delete server
+  delete server;
+  // Step 5: Delete service
+  delete std::get<0>(rpc.second);
+  // Step 6: Delete builder
+  delete std::get<1>(rpc.second);
 }
 
 void Master() {
-  auto env = EnvStart();
+  // auto env = EnvStart();
 
   // Steps to shutdom
   // 1. Shutdown server
   // 2. Join server thread
   // 3. Delete server thread
   // 4. Delete server
-  env.second->get()->Shutdown();
-  env.first->join();
-  delete env.first;
-  delete env.second;
+  // env.second->get()->Shutdown();
+  // env.first->join();
+  // delete env.first;
+  // delete env.second;
 }
 
 } // namespace dis

@@ -11,7 +11,17 @@ namespace dis {
 
 void Master();
 
-std::pair<std::thread *, std::unique_ptr<grpc::Server> *> EnvStart();
+class DisServiceImpl;
+using grpc::ServerBuilder;
+using grpc::Server;
+
+typedef std::tuple<DisServiceImpl *, ServerBuilder *, std::unique_ptr<Server> *> RpcServerType;
+
+
+std::pair<std::thread *, RpcServerType> EnvStart();
+
+void FreeDisSerivce(std::pair<std::thread *, RpcServerType> rpc);
+
 
 }
 
