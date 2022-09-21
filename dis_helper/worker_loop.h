@@ -5,6 +5,7 @@ namespace dis {
 
 void WorkerLoop();
 
+void SynceEnv();
 
 }
 

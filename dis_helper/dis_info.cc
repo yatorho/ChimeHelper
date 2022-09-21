@@ -5,13 +5,7 @@ namespace core {
 
 AddressMap address_map; // Make sure thread safe
 
-AddressMap GetGlobalAddressMap() { return address_map; }
-
-void SetGlobalAddressMap(const AddressMap &address) { address_map = address; }
-
-void InsertGlobalAddressMap(int rank, const Address &address) {
-  address_map[rank] = address;
-}
+AddressMap& GetGlobalAddressMap() { return address_map; }
 
 } // namespace core
 } // namespace dis

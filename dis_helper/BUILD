@@ -26,6 +26,12 @@ cc_binary(
   deps = [":lib"]
 )
 
+cc_binary(
+    name = "test",
+    srcs = ["test_cast.cc"],
+    deps = [":lib"]
+)
+
 cc_library(
     name = "lib",
     srcs = ["master.cc",

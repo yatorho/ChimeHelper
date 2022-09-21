@@ -16,8 +16,13 @@ int main() {
     return 1;
   }
 
-  if (std::string(l_port) != std::string(m_port)) {
-    dis::WorkerLoop();
-  }
-  dis::Master();
+  // Start Server and Client
+  auto env = dis::EnvStart();
+  dis::SynceEnv();
+
+  // Release server resource
+  env.second->get()->Shutdown();
+  env.first->join();
+  delete env.first;
+  delete env.second;
 }

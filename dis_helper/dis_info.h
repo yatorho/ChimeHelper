@@ -20,9 +20,7 @@ struct Address {
 
 typedef std::map<int, Address> AddressMap;
 
-AddressMap GetGlobalAddressMap();
-void SetGlobalAddressMap(const AddressMap &address_map);
-void InsertGlobalAddressMap(int rank, const Address &address);
+AddressMap &GetGlobalAddressMap();
 
 } // namespace core
 } // namespace dis

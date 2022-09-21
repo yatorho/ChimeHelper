@@ -1,9 +1,10 @@
-#include "dis_helper/env.pb.h"
 #include "dis_helper/worker_loop.h"
+#include "dis_helper/env.pb.h"
 
 #include <glog/logging.h>
 #include <grpc++/grpc++.h>
 #include <memory>
+#include <string>
 #include <thread>
 
 #include "dis_helper/dis_info.h"
@@ -23,12 +24,16 @@ public:
       }
     }
 
-    std::string add_s = address.ip + ":" + std::to_string(address.port);
-    std::shared_ptr<Channel> channel =
-        grpc::CreateChannel(add_s, grpc::InsecureChannelCredentials());
-    auto stub = dis::DisService::NewStub(channel);
+  grpc::ChannelArguments channel_args;
+  channel_args.SetInt("grpc.max_receive_message_length",
+                      std::numeric_limits<int>::max());
 
-    _stubs.emplace_back(::dis::core::Address(address), std::move(stub));
+  std::string add_s = address.ip + ":" + std::to_string(address.port);
+  std::shared_ptr<Channel> channel =
+      grpc::CreateCustomChannel(add_s, grpc::InsecureChannelCredentials(), channel_args);
+  auto stub = dis::DisService::NewStub(channel);
+
+  _stubs.emplace_back(::dis::core::Address(address), std::move(stub));
   }
 
   ::dis::core::AddressMap GetAddressMap() {
@@ -56,6 +61,7 @@ public:
         std::string(getenv("MASTER_ADDRESS"))};
     for (auto &pair : _stubs) {
       if (pair.first == master_address) {
+        LOG(INFO) << pair.first.ip << ":" << pair.first.port;
         return &pair.second;
       }
     }
@@ -91,32 +97,48 @@ private:
 };
 
 void SynceEnv() {
-  std::string address = std::string(getenv("MASTER_ADDRESS")) + ":" +
-                        std::string(getenv("MASTER_PORT"));
+  ::dis::core::Address local_address{
+      std::stoi(std::string(getenv("LOCAL_PORT"))),
+      std::string(getenv("LOCAL_ADDRESS"))};
+  ::dis::core::Address master_address{
+      std::stoi(std::string(getenv("MASTER_PORT"))),
+      std::string(getenv("MASTER_ADDRESS"))};
 
   grpc::ChannelArguments channel_args;
   channel_args.SetInt("grpc.max_receive_message_length",
                       std::numeric_limits<int>::max());
 
   DisServiceClient *client = new DisServiceClient;
-  client->Register(
-      ::dis::core::Address{std::stoi(std::string(getenv("MASTER_PORT"))),
-                           std::string(getenv("MASTER_ADDRESS"))});
+  client->Register(master_address);
 
-  CHECK(client->SendAddress(
-      ::dis::core::Address{std::stoi(std::string(getenv("LOCAL_PORT"))),
-                           std::string(getenv("LOCAL_ADDRESS"))}));
-  // sleep for 10ms
-  std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  if (!(local_address == master_address)) {
+    CHECK(client->SendAddress(local_address));
+    // sleep for 10ms
+    while (true) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      ::dis::core::AddressMap address_map = client->GetAddressMap();
+      if (address_map.size() ==
+          static_cast<size_t>(std::stoi(std::string(getenv("WORLD_SIZE"))))) {
+        ::dis::core::GetGlobalAddressMap() = address_map;
+        break;
+      }
+    }
+  } else {
+    while (::dis::core::GetGlobalAddressMap().size() !=
+           static_cast<size_t>(std::stoi(std::string(getenv("WORLD_SIZE"))))) {
+      // sleep for 20ms
+      std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    }
+  }
 
-  ::dis::core::AddressMap address_map = client->GetAddressMap();
-  
-  ::dis::core::SetGlobalAddressMap(address_map);
+  // Registe stub from global addressmap
+  for (auto &pair : ::dis::core::GetGlobalAddressMap()) {
+    client->Register(pair.second);
+  }
+
   LOG(INFO) << "EnvStart success! ";
 }
 
-void WorkerLoop() { 
-  SynceEnv(); 
-}
+void WorkerLoop() { SynceEnv(); }
 
 } // namespace dis

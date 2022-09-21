@@ -3,6 +3,7 @@
 
 #include <grpc++/grpc++.h>
 #include <map>
+#include <memory>
 #include <thread>
 
 #include <glog/logging.h>
@@ -15,7 +16,6 @@ using grpc::ServerBuilder;
 using grpc::ServerContext;
 
 namespace {
-
 
 int current_rank = 1;
 
@@ -40,9 +40,11 @@ class DisServiceImpl final : public dis::DisService::Service {
   ::grpc::Status SendAddress(::grpc::ServerContext *context,
                              const ::dis::Address *adr,
                              ::dis::Status *status) override {
+    LOG(FATAL) << "FFFFFFFFFFFFFFFF";
     ::dis::core::Address address{adr->port(), adr->ip()};
-    ::dis::core::InsertGlobalAddressMap(current_rank, address);
-    // address_map.insert(std::make_pair(current_rank, std::move(address)));
+    
+    ::dis::core::GetGlobalAddressMap().insert(
+        std::make_pair(current_rank, std::move(address)));
     current_rank++;
 
     if (current_rank > std::stoi(std::string(getenv("WORLD_SIZE")))) {
@@ -68,14 +70,15 @@ std::unique_ptr<Server> *RunServer() {
   address += std::string(getenv("LOCAL_PORT"));
   CHECK(address != "") << "LOCAL_ADDRESS not set";
 
-  DisServiceImpl service;
-  ServerBuilder builder;
-  builder.AddListeningPort(address, grpc::InsecureServerCredentials());
-  builder.RegisterService(&service);
-  builder.SetMaxMessageSize(std::numeric_limits<int>::max());
+  auto service = new DisServiceImpl;
+  auto builder = new ServerBuilder;
+  builder->AddListeningPort(address, grpc::InsecureServerCredentials());
+  builder->RegisterService(service);
+  builder->SetMaxMessageSize(std::numeric_limits<int>::max());
 
-  std::unique_ptr<Server> server(builder.BuildAndStart());
-  LOG(INFO) << "Server listening on " << address;
+ 
+  std::unique_ptr<Server> server(builder->BuildAndStart());
+  LOG(INFO) << "Server listening on " << address << std::endl;
 
   return new std::unique_ptr<Server>(std::move(server));
 }
@@ -89,11 +92,10 @@ std::pair<std::thread *, std::unique_ptr<Server> *> EnvStart() {
   // Insert first address to address map.
   // Get port from environment variable 'MASTER_PORT'
   int port = std::stoi(std::string(getenv("MASTER_PORT")));
-  
-  ::dis::core::InsertGlobalAddressMap(0, ::dis::core::Address{port, std::string(getenv("MASTER_ADDRESS"))});
-  // address_map.insert(std::make_pair(
-  //     0, ::dis::core::Address{port, std::string(getenv("MASTER_ADDRESS"))}));
 
+  ::dis::core::GetGlobalAddressMap().insert(
+      std::make_pair(0, ::dis::core::Address{port, std::string(getenv("MASTER_ADDRESS"))}));
+  
   std::unique_ptr<Server> *server = RunServer();
 
   // Must use value passing in new thread instead of reference.
