@@ -1,6 +1,8 @@
 # Hepler for Chime
 
-This is a helper repository for [Chime](https://github.com/yatorho/CHIME) where we implement some useful functions and libraries for `Chime`.
+This is a helper repository for [Chime](https://github.com/yatorho/CHIME) where we implement some useful functions and libraries.
+
+- Chime is a deep learning framework based on C++ and CUDA. It is designed to be easy to use and easy to extend. It is also a good example to show how to implement a deep learning framework from scratch.
 
 ## Environment
 
