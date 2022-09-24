@@ -1,4 +1,6 @@
 #include "dis_helper/dis_info.h"
+#include "dis_helper/env.pb.h"
+#include <vector>
 
 namespace dis {
 namespace core {
