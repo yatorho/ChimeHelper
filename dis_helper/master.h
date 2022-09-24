@@ -4,7 +4,6 @@
 #include <map>
 #include <thread>
 #include <memory>
-
 #include <grpc++/grpc++.h>
 
 namespace dis {

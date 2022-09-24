@@ -9,6 +9,7 @@
 
 #include "dis_helper/dis_info.h"
 #include "dis_helper/env.grpc.pb.h"
+#include "dis_helper/matrix.h"
 
 using grpc::Channel;
 using grpc::ClientContext;
@@ -24,16 +25,16 @@ public:
       }
     }
 
-  grpc::ChannelArguments channel_args;
-  channel_args.SetInt("grpc.max_receive_message_length",
-                      std::numeric_limits<int>::max());
+    grpc::ChannelArguments channel_args;
+    channel_args.SetInt("grpc.max_receive_message_length",
+                        std::numeric_limits<int>::max());
 
-  std::string add_s = address.ip + ":" + std::to_string(address.port);
-  std::shared_ptr<Channel> channel =
-      grpc::CreateCustomChannel(add_s, grpc::InsecureChannelCredentials(), channel_args);
-  auto stub = dis::DisService::NewStub(channel);
+    std::string add_s = address.ip + ":" + std::to_string(address.port);
+    std::shared_ptr<Channel> channel = grpc::CreateCustomChannel(
+        add_s, grpc::InsecureChannelCredentials(), channel_args);
+    auto stub = dis::DisService::NewStub(channel);
 
-  _stubs.emplace_back(::dis::core::Address(address), std::move(stub));
+    _stubs.emplace_back(::dis::core::Address(address), std::move(stub));
   }
 
   ::dis::core::AddressMap GetAddressMap() {
@@ -67,6 +68,15 @@ public:
     return nullptr;
   }
 
+  std::unique_ptr<DisService::Stub> *FindStub(const dis::core::Address &addr) {
+    for (auto &pair : _stubs) {
+      if (pair.first == addr) {
+        return &pair.second;
+      }
+    }
+    return nullptr;
+  }
+
   bool SendAddress(const ::dis::core::Address &addr) {
     ClientContext context;
     ::dis::Address address;
@@ -87,6 +97,43 @@ public:
     }
     LOG(INFO) << status.message();
     return true;
+  }
+
+  dis::core::Matrix *GetMatrixFromRemote(const dis::core::Address &addr,
+                                         const std::string &target_name,
+                                         const std::string &result_name,
+                                         int row_beginl, int row_endl,
+                                         int col_beginl, int col_endl) {
+    ClientContext context;
+    ::dis::MatrixRemoteSynceInfo info;
+    info.set_name(target_name);
+    info.set_row_beginl(row_beginl);
+    info.set_row_endl(row_endl);
+    info.set_col_beginl(col_beginl);
+    info.set_col_endl(col_endl);
+
+    ::dis::Matrix reply_matrix;
+
+    ::grpc::Status g_status = FindStub(addr)->get()->GetMatrixFromRemote(
+        &context, info, &reply_matrix);
+    if (!g_status.ok()) {
+      LOG(ERROR) << "GRPC SendAddress failed: " << g_status.error_message();
+      return nullptr;
+    }
+
+    DCHECK(reply_matrix.rows() == (row_endl - row_beginl));
+    DCHECK(reply_matrix.cols() == (col_endl - col_beginl));
+    DCHECK(reply_matrix.data_size() ==
+           (row_endl - row_beginl) * (col_endl - col_beginl));
+
+    dis::core::Matrix *result = new dis::core::Matrix(
+        reply_matrix.rows(), reply_matrix.cols(), result_name);
+
+    for (int i = 0; i < result->rows * result->cols; i++) {
+      result->data.get()[i] = reply_matrix.data(i);
+    }
+
+    return result;
   }
 
 private:
@@ -119,15 +166,15 @@ void SynceEnv() {
       if (address_map.size() ==
           static_cast<size_t>(std::stoi(std::string(getenv("WORLD_SIZE"))))) {
         ::dis::core::GetGlobalAddressMap() = address_map;
-        break;
         LOG(INFO) << "Sync Env Success!";
+        break;
       }
     }
   } else {
     while (::dis::core::GetGlobalAddressMap().size() !=
            static_cast<size_t>(std::stoi(std::string(getenv("WORLD_SIZE"))))) {
-      // sleep for 20ms
-      std::this_thread::sleep_for(std::chrono::milliseconds(20));
+      // sleep for 200ms
+      std::this_thread::sleep_for(std::chrono::milliseconds(200));
     }
     LOG(INFO) << "EnvStart success! ";
   }
@@ -138,6 +185,6 @@ void SynceEnv() {
   }
 }
 
-void WorkerLoop() { SynceEnv(); }
+void WorkerLoop() { SynceEnv();}
 
 } // namespace dis

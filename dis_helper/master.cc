@@ -1,6 +1,9 @@
 #include "dis_helper/master.h"
+#include "dis_helper/graph.h"
+#include "dis_helper/matrix.h"
 #include "dis_info.h"
 
+#include <cstddef>
 #include <grpc++/grpc++.h>
 #include <map>
 #include <memory>
@@ -15,9 +18,7 @@ using grpc::Server;
 using grpc::ServerBuilder;
 using grpc::ServerContext;
 
-
 namespace dis {
-
 
 int current_rank = 1;
 
@@ -43,7 +44,7 @@ class DisServiceImpl final : public dis::DisService::Service {
                              const ::dis::Address *adr,
                              ::dis::Status *status) override {
     ::dis::core::Address address{adr->port(), adr->ip()};
-    
+
     ::dis::core::GetGlobalAddressMap().insert(
         std::make_pair(current_rank, std::move(address)));
     current_rank++;
@@ -63,8 +64,37 @@ class DisServiceImpl final : public dis::DisService::Service {
     status->set_message("Address received");
     return ::grpc::Status::OK;
   }
-};
 
+  ::grpc::Status GetMatrixFromRemote(::grpc::ServerContext *context,
+                                     const ::dis::MatrixRemoteSynceInfo *info,
+                                     ::dis::Matrix *matrix) override {
+
+    int row_beginl = info->row_beginl();
+    int row_endl = info->row_endl();
+    int col_beginl = info->col_beginl();
+    int col_endl = info->col_endl();
+
+    matrix->mutable_data()->Resize(
+        (row_endl - row_beginl) * (col_endl - col_beginl), 0);
+
+    dis::core::Graph *graph = dis::core::GetDefaultGraph();
+    dis::core::Matrix *matrix_get = graph->FindTargetMatrix(info->name());
+    if (matrix_get != nullptr) {
+      for (int i = row_beginl; i < row_endl; i++) {
+        for (int j = col_beginl; j < col_endl; j++) {
+          matrix->set_data((i - row_beginl) * (col_endl - col_beginl) +
+                               (j - col_beginl),
+                           matrix_get->data.get()[i * matrix_get->cols + j]);
+        }
+      }
+
+      return ::grpc::Status::OK;
+    }
+
+    LOG(FATAL) << "Couldn't find target matrix in graph";
+    return ::grpc::Status::OK;
+  }
+};
 
 RpcServerType RunServer() {
   std::string address(getenv("LOCAL_ADDRESS"));
@@ -78,7 +108,6 @@ RpcServerType RunServer() {
   builder->RegisterService(service);
   builder->SetMaxMessageSize(std::numeric_limits<int>::max());
 
- 
   std::unique_ptr<Server> server(builder->BuildAndStart());
   LOG(INFO) << "Server listening on " << address << std::endl;
 
@@ -86,17 +115,19 @@ RpcServerType RunServer() {
                          new std::unique_ptr<Server>(std::move(server)));
 }
 
-std::pair<std::thread *,RpcServerType> EnvStart() {
+std::pair<std::thread *, RpcServerType> EnvStart() {
+
+
 
   // Insert first address to address map.
   // Get port from environment variable 'MASTER_PORT'
   int port = std::stoi(std::string(getenv("MASTER_PORT")));
 
-  ::dis::core::GetGlobalAddressMap().insert(
-      std::make_pair(0, ::dis::core::Address{port, std::string(getenv("MASTER_ADDRESS"))}));
-  
+  ::dis::core::GetGlobalAddressMap().insert(std::make_pair(
+      0, ::dis::core::Address{port, std::string(getenv("MASTER_ADDRESS"))}));
+
   auto rpc = RunServer();
-  std::unique_ptr<Server> * server = std::get<2>(rpc);
+  std::unique_ptr<Server> *server = std::get<2>(rpc);
   // Must use value passing in new thread instead of reference.
   std::thread *server_thread = new std::thread([server] {
     (*server)->Wait(); // Wait for server to shutdown.
@@ -119,6 +150,7 @@ void FreeDisSerivce(std::pair<std::thread *, RpcServerType> rpc) {
   delete std::get<0>(rpc.second);
   // Step 6: Delete builder
   delete std::get<1>(rpc.second);
+
 }
 
 void Master() {

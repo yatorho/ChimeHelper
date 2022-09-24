@@ -105,7 +105,7 @@ int main() {
   channel_args.SetInt("grpc.max_receive_message_length",
                       std::numeric_limits<int>::max());
   RPCMatMulClient client(grpc::CreateCustomChannel(
-      "127.0.0.1:50051", grpc::InsecureChannelCredentials(), channel_args));
+      "localhost:50051", grpc::InsecureChannelCredentials(), channel_args));
 
   uint64_t start = chime::platform::Env::Default()->NowMicros();
   FloatMatrix *result = client.RPCMatMul(matrix1, matrix2);

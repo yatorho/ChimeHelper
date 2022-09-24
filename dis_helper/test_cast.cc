@@ -19,7 +19,7 @@ int main () {
                       std::numeric_limits<int>::max());
 
   auto stub = dis::DisService::NewStub(grpc::CreateCustomChannel(
-      "127.0.0.1:50050", grpc::InsecureChannelCredentials(), channel_args));
+      "127.0.1.1:50051", grpc::InsecureChannelCredentials(), channel_args));
 
   grpc::ClientContext context;
   ::dis::Address address;
