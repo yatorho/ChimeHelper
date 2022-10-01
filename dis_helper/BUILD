@@ -28,7 +28,7 @@ cc_binary(
 
 cc_binary(
     name = "test",
-    srcs = ["test_cast.cc"],
+    srcs = ["test_case.cc"],
     deps = [":lib"]
 )
 

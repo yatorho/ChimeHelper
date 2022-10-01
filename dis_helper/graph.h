@@ -29,7 +29,7 @@ public:
     _matrices_group[matrix->name] = matrix;
   }
 
-  dis::core::Matrix *FindTargetMatrix(std::string name) {
+  dis::core::Matrix *FindTargetMatrix(const std::string &name) {
     auto iter = _matrices_group.find(name);
     if (iter != _matrices_group.end()) {
       return (*iter).second;
@@ -37,6 +37,7 @@ public:
 
     return nullptr;
   }
+
 
 private:
   MatricesGroupType _matrices_group;

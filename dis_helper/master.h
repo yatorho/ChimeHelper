@@ -16,11 +16,9 @@ using grpc::Server;
 
 typedef std::tuple<DisServiceImpl *, ServerBuilder *, std::unique_ptr<Server> *> RpcServerType;
 
-
 std::pair<std::thread *, RpcServerType> EnvStart();
 
 void FreeDisSerivce(std::pair<std::thread *, RpcServerType> rpc);
-
 
 }
 

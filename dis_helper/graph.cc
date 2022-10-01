@@ -5,8 +5,7 @@ namespace core {
 
 dis::core::Graph static_graph;
 
-Graph* GetDefaultGraph(){
-return &static_graph;
-}
-}
+Graph *GetDefaultGraph() { return &static_graph; }
+
+} // namespace core
 } // namespace dis
