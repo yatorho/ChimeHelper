@@ -1,6 +1,7 @@
 #include "dis_helper/master.h"
 #include "dis_helper/graph.h"
 #include "dis_helper/matrix.h"
+#include "dis_helper/worker_loop.h"
 #include "dis_info.h"
 
 #include <cstddef>
@@ -73,6 +74,9 @@ class DisServiceImpl final : public dis::DisService::Service {
     int row_endl = info->row_endl();
     int col_beginl = info->col_beginl();
     int col_endl = info->col_endl();
+    // Check begin less than end
+    CHECK(row_beginl < row_endl);
+    CHECK(col_beginl < col_endl);
 
     matrix->mutable_data()->Resize(
         (row_endl - row_beginl) * (col_endl - col_beginl), 0);
@@ -80,6 +84,13 @@ class DisServiceImpl final : public dis::DisService::Service {
     dis::core::Graph *graph = dis::core::GetDefaultGraph();
     dis::core::Matrix *matrix_get = graph->FindTargetMatrix(info->name());
     if (matrix_get != nullptr) {
+
+      // Wait for matrix ready
+      // Caution: this is a blocking call
+      // TODO(Dza): this code may cause deadlock, `while` should be improved
+      while (!matrix_get->computed)
+        ;
+
       for (int i = row_beginl; i < row_endl; i++) {
         for (int j = col_beginl; j < col_endl; j++) {
           matrix->set_data((i - row_beginl) * (col_endl - col_beginl) +
@@ -88,10 +99,14 @@ class DisServiceImpl final : public dis::DisService::Service {
         }
       }
 
+      matrix->set_rows(row_endl - row_beginl);
+      matrix->set_cols(col_endl - col_beginl);
+      matrix->set_name(info->name());
+          // LOG(INFO) << "find target matrix in graph";
       return ::grpc::Status::OK;
     }
 
-    LOG(FATAL) << "Couldn't find target matrix in graph";
+    // LOG(INFO) << "Couldn't find target matrix in graph";
     return ::grpc::Status::OK;
   }
 };
@@ -116,8 +131,6 @@ RpcServerType RunServer() {
 }
 
 std::pair<std::thread *, RpcServerType> EnvStart() {
-
-
 
   // Insert first address to address map.
   // Get port from environment variable 'MASTER_PORT'
@@ -150,21 +163,6 @@ void FreeDisSerivce(std::pair<std::thread *, RpcServerType> rpc) {
   delete std::get<0>(rpc.second);
   // Step 6: Delete builder
   delete std::get<1>(rpc.second);
-
-}
-
-void Master() {
-  // auto env = EnvStart();
-
-  // Steps to shutdom
-  // 1. Shutdown server
-  // 2. Join server thread
-  // 3. Delete server thread
-  // 4. Delete server
-  // env.second->get()->Shutdown();
-  // env.first->join();
-  // delete env.first;
-  // delete env.second;
 }
 
 } // namespace dis
