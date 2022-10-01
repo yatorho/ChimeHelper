@@ -26,12 +26,6 @@ cc_binary(
   deps = [":lib"]
 )
 
-cc_binary(
-    name = "test",
-    srcs = ["test_case.cc"],
-    deps = [":lib"]
-)
-
 cc_library(
     name = "lib",
     srcs = ["master.cc",
@@ -48,4 +42,3 @@ cc_library(
             "@com_github_grpc_grpc//:grpc++",
             "@org_chime//chime/core/platform:logging"]
 )
-
