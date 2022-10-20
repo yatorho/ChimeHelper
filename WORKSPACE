@@ -1,10 +1,21 @@
 load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
+
+http_archive(
+    name = "rules_cuda",
+    sha256 = "f80438bee9906e9ecb1a8a4ae2365374ac1e8a283897281a2db2fb7fcf746333",
+    strip_prefix = "runtime-b1c7cce21ba4661c17ac72421c6a0e2015e7bef3/third_party/rules_cuda",
+    urls = ["https://github.com/tensorflow/runtime/archive/b1c7cce21ba4661c17ac72421c6a0e2015e7bef3.tar.gz"],
+)
+
+load("@rules_cuda//cuda:dependencies.bzl", "rules_cuda_dependencies")
+rules_cuda_dependencies()
+
 git_repository(
     name = "org_chime",
     remote = "https://github.com/yatorho/CHIME.git",
-    commit = "afb4466ba1a1f1e187430d0842637d3f54969807",
+    commit = "0985b646969822ba13b2b99421670a74c4e0c4de",
     shallow_since = "1660981055 +0800",
 )
 
@@ -28,6 +39,7 @@ chime_extra_deps2()
 ###################################################################################################
 http_archive(
     name = "pybind11_bazel",
+    sha256 = "fec6281e4109115c5157ca720b8fe20c8f655f773172290b03f57353c11869c2",
     strip_prefix = "pybind11_bazel-72cbbf1fbc830e487e3012862b7b720001b70672",
     urls = ["https://github.com/pybind/pybind11_bazel/archive/72cbbf1fbc830e487e3012862b7b720001b70672.zip"],
 )
@@ -61,3 +73,5 @@ http_archive(
     strip_prefix = "half-2.1.0-fix-cuda-raise",
     build_file = "//half_helper:half.BUILD",
 )
+
+###################################################################################################

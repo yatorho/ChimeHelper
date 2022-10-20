@@ -6,7 +6,7 @@ This is a helper repository for [Chime](https://github.com/yatorho/CHIME) where 
 
 ## Environment
 
-To use this repository, you need to install `Bazel` at first. Please refer to [Bazel](https://bazel.build/) for more information. The version of bazel we use is `3.1.0`.
+To use this repository, you need to install `Bazel` at first. Please refer to [Bazel](https://bazel.build/) for more information. The version of bazel we use is `4.0.0`.
 
 ## Hello World
 
