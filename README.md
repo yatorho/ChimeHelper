@@ -1,4 +1,4 @@
-# Hepler for Chime
+# Helper for Chime
 
 This is a helper repository for [Chime](https://github.com/yatorho/CHIME) where we implement some useful functions and libraries.
 
